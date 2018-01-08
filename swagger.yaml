@@ -1,0 +1,754 @@
+swagger: '2.0'
+info:
+  description: >2-
+     Air Web servisi su u potpunosti RESTfull i u ovom dokumentu će biti prikazan način njihovog korštenja.
+
+     ### Header
+     Air isključivo podržava komunikaciju http/1.1 protokolom koristeći JSON kao format. To znači da bi pozivi radili u header se mora dodati:
+
+
+    ```
+     Content-Type: application/json
+     Accept: application/json
+    ```
+
+
+    ### Authentikacija
+
+    Svaka eksterna aplikacija koja želi da koristi Air API treba da dobije
+    AuthToken.  AuthToken se kreira na način da se eksterna integracija doda u
+    Air sistem gdje se generiše ovaj token.
+
+    Za svaki poziv prema API-u mora se proslijediti PrivateToken u headeru
+    requesta
+
+    ``` curl --header "Auth-Token: 9koXpg98eAheJpvBs5tK"
+    http://app.wizard-air.co/patients ```
+
+    Ukoliko token nije validan Air će vratiti odgovor
+
+    ``` HTTP/1.1 401 Unauthorized ```
+  version: 1.0.0
+  title: Wizard Air API dokumentacija
+host: app.wizard-air.co
+basePath: /
+tags:
+  - name: Pacijenti
+    description: Prikaz upravljanja sa pacijentima
+  - name: Narudžbe
+    description: (orders)
+  - name: Webhooks
+    description: notifikacije
+  - name: Lokacije
+    description: (senders)
+  - name: Doktori
+    description: Upravljanje doktorima
+schemes:
+  - http
+paths:
+  /patients:
+    post:
+      tags:
+        - Pacijenti
+      summary: Dodavanje novog pacijenta
+      description: >
+        Obavezna polja:
+
+        - identifier:String - Identifikacijski broj pacijenta, kao što je JMBG
+        ili ukoliko je pacijent nepoznat neki jedinstveni broj
+
+        - first_name:String - ime pacijenta
+
+        - last_name:String - prezime pacijenta
+
+        - data_of_birth:Sring - datum rođenja pacijenta. Format (yyyy-mm-dd),
+        npr. 1990-12-25
+
+        - gender:String - spol pacijenta, dozvoljene vrijednosti su (male,
+        female, unknown, transgender, hermaphrodite)
+
+
+        Ukoliko neka obavezna polja fale ili je došlo do greške prilikom
+        POST/PUT akcija, Air će vratiti odgovor sa greškom
+      operationId: addPatient
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Dodavanje novog pacijenta u bazu
+          required: true
+          schema:
+            $ref: '#/definitions/create_pacijent'
+      responses:
+        '201':
+          description: Created
+          schema:
+            $ref: '#/definitions/create_pacijent_response'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            type: object
+            properties:
+              identifier:
+                type: array
+                items:
+                  type: string
+                  example: je već zauzet
+  '/patients/{identifier}':
+    put:
+      tags:
+        - Pacijenti
+      summary: Izmjena postojećeg pacijenta
+      description: Potrebno je prosljediti samo atribut čiju vrijednost želimo izmijenit
+      operationId: updatepacijent
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: identifier
+          in: path
+          description: Patient identifier
+          required: true
+          type: string
+        - in: body
+          name: body
+          description: Uzmimo za primjer izmjenu imena za pacijenta
+          required: true
+          schema:
+            type: object
+            properties:
+              first_name:
+                type: string
+                example: James
+      responses:
+        '200':
+          description: update post response
+          schema:
+            $ref: '#/definitions/update_pacijent_response'
+    get:
+      tags:
+        - Pacijenti
+      summary: Informacije o pacijentu
+      description: ''
+      operationId: findPatentsByIdentifier
+      produces:
+        - application/json
+      parameters:
+        - name: identifier
+          in: path
+          description: Patient identifier
+          required: true
+          type: string
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/update_pacijent_response'
+  '/patients/{identifier}/orders':
+    post:
+      tags:
+        - Narudžbe
+      summary: Dodavanje nove narudžbe
+      description: >
+        Narudžba se dodaje po pacijentu.
+
+        Obavezna polja:
+          - reference_id:String - Oznaka slučaja u bolničkom sistemu
+          - order_analyses:Array - lista analiza sa njihovim šiframa
+        Ostala polja:
+          - doctor_code:String - informacije o doktoru, odnosno šifra doktora
+          - sender_code:String - informacije o pošiljaocu/lokaciji
+          - urgent:Boolean - da li je narudžba hitna. Defaultna vrijednost je "false", dozvoljene vrijednosti: ("true", "false")
+          - comment:String - zabilješka prilikom pravljenja narudžbe
+
+        Ukoliko je došlo do greške prilikom POST/PUT poziva AIR će vratiti
+        grešku sa detaljnim opisom. Prikazana je  greška ukoliko nije
+        proslijeđena šifra doktora.
+      operationId: addOrder
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: identifier
+          in: path
+          description: Patient identifier
+          required: true
+          type: string
+        - in: body
+          name: body
+          description: Dodavanje nove narudžbe
+          required: true
+          schema:
+            $ref: '#/definitions/create_order'
+      responses:
+        '201':
+          description: Created
+          schema:
+            $ref: '#/definitions/create_order_response'
+        '422':
+          description: Unprocessable Entity
+          schema:
+            type: object
+            properties:
+              doctor_code:
+                type: array
+                items:
+                  type: string
+                  example: potrebno je proslijediti šifru doktora
+  '/orders/{reference_id}':
+    get:
+      tags:
+        - Narudžbe
+      summary: Informacije o narudžbi
+      description: >
+        Korisnik može da pošalje zahtjev na AIR servis i dobije informacije o
+        narudžbi
+
+        Air ovdje vraća sve bitne informacije o narudžbi:
+
+        - Doktor
+
+        - Lokacija
+
+        - Status:String - ovo polje opisuje status narudžbe u laboratoriji
+          Pending - laboratorija je zaprimila narudžbu ali nije još uvijek aktivirana
+          Active - narudžba je aktivirana i trenutno se radi
+          Finished - narudžba je završena
+          Rejected - narudžba je odbijena
+        - Analuze sa njihovim atributima
+          code:String - šifra analize
+          value:String - rezultat pretrage
+          ref_value:String - referentna vrijednost
+          flag:String - da li je rezultat validanm vrijednosti flagova su 
+          L= Abnormal Low, H=Abnormal High, I=Incorrect, ""= prazno za tacan
+        - created_at:String - datum/vrijeme kad je narudžba kreirana
+
+        - updated_at:String - datum/vrijeme zadnje izmjene na narudžbi
+      operationId: getOrderInforamation
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - name: reference_id
+          in: path
+          description: Order identifier
+          required: true
+          type: string
+      responses:
+        '200':
+          description: OK
+          schema:
+            $ref: '#/definitions/get_order_response'
+        '404':
+          description: Order not found
+  '{to_your_endpoint}':
+    post:
+      tags:
+        - Webhooks
+      summary: Dodavanje nove narudžbe
+      description: >
+        Da eksterni API klijenti ne bih morao konstantno pozivati AIR API i
+        provjeravati šta se događa sa narudžbom, AIR ima mogućnost da šalje
+        notifikacije API klijentu kad se dogodi izmjena na narudžbi.
+
+
+        AIR šalje ove notifikacije na slijedećim eventima:
+
+        - Pending - laboratorija je zaprimila narudžbu ali nije još uvijek
+        aktivirana
+
+        - Active - narudžba je aktivirana i trenutno se radi
+
+        - Finished - narudžba je završena
+
+        - Rejected - narudžba je odbijena
+
+
+        U AIR-u eksterna aplikacija registruje svoj URL endpoint na koji će AIR
+        slati ove notifikacije u vidu POST requesta. Obaveza eksternog korisnika
+        je da parsira ove informacije i uradi potrebe korake.
+
+
+        Odgovor na webhook/notifikaciju
+
+        Vaš endpoint odgovara da je uspješno primio informacije tako što šalje
+        200 OK odgovor. Bilo kakav odgovor izvan 200 će za AIR značiti da niste
+        uspješno primili notifikaciju (uključujući i 301 Redirect).
+
+
+        AIR čeka 5 sekundi na odgovor, ukoliko odgovor ne dođe ili dobijemo
+        grešku, mi pokušavamo tu konekciju maksimalno 5 puta u periodu od
+        narednih 8 sati. Ukoliko ne uspijemo poslati notifikaciju 5 puta,
+        brišemo webhook.
+
+
+        Najbitnija stvar je da odgovorite brzo. Ne bi trebali da imate bilo
+        kakve kompleksne procese na primanju notifikacija( zbog koje primanje
+        može da traje duže od 5 sekudni).
+
+
+        Mi preporučujemo da procesiranje radite poslije slanja odgovora Airu.
+
+
+        Anatomija webhooka 
+
+        Notifikacija sadrži JSON payload i header u kojem se nalazi kontekst o
+        čemu se radi
+
+        - X-AIR-Event: orders/activated -koji je event u pitanju
+
+        - Auth-Token - Vaš API token... možete provjeriti da li token odgovara
+        Vašem tokenu
+
+
+        Na osnovu status narudzbe mozete da provjerite da  li je narudzba
+        zavrsena (status: "finished").
+      parameters:
+        - name: to_your_endpoint
+          in: path
+          description: Patient identifier
+          required: true
+          type: string
+        - in: header
+          name: X-Air-Event
+          schema:
+            type: string
+          required: true
+        - in: header
+          name: Auth-Token
+          schema:
+            type: string
+          required: true
+        - in: body
+          name: body
+          description: Primjer webhook poruke
+          required: true
+          schema:
+            $ref: '#/definitions/get_order_response'
+      responses:
+        '200':
+          description: OK
+  /senders:
+    post:
+      tags:
+        - Lokacije
+      summary: Dodavanje nove lokacije
+      description: >
+        Obavezna polja:
+
+        - code:String - identifikacijski kod lokacije. Code je unikatan, što
+        znači da Air neće dopustiti dodavanje dvije lokacije sa istim kodom.
+
+        - name:String - naziv lokacije
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Dodavanje nove lokacije u bazu
+          required: true
+          schema:
+            $ref: '#/definitions/create_sender'
+      responses:
+        '201':
+          description: Created
+          schema:
+            $ref: '#/definitions/create_sender_response'
+  /doctors:
+    post:
+      tags:
+        - Doktori
+      summary: Dodavanje nove lokacije
+      description: |
+        Obavezno polje:
+         - code:String - identifikacijski kod lokacije. Code je unikatan, što znači da Air neće dopustiti dodavanje dva doktora sa istim kodom.
+         - title:String - titula doktora
+         - first_name:String - ime doktora
+         - last_name:String - prezime doktora
+         
+        Ostala polja:
+          - email:String - email doktora
+      parameters:
+        - in: body
+          name: body
+          description: Dodavanje novog doktora
+          required: true
+          schema:
+            $ref: '#/definitions/create_doctor'
+      responses:
+        '201':
+          description: Created
+          schema:
+            $ref: '#/definitions/create_doctor_response'
+definitions:
+  create_doctor:
+    type: object
+    properties:
+      code:
+        type: string
+        example: code_1
+      title:
+        type: string
+        example: MD
+      first_name:
+        type: string
+        example: Gregory
+      last_name:
+        type: string
+        example: House
+      email:
+        type: string
+        example: gerogory.house@example.com
+  create_doctor_response:
+    type: object
+    properties:
+      code:
+        type: string
+        example: code_1
+      title:
+        type: string
+        example: MD
+      first_name:
+        type: string
+        example: Gregory
+      last_name:
+        type: string
+        example: House
+      email:
+        type: string
+        example: gerogory.house@example.com
+      created_at:
+        type: string
+        example: '2017-11-23T12:36:36.621+01:00'
+      updated_at:
+        type: string
+        example: '2017-11-23T12:36:36.621+01:00'
+  create_sender:
+    type: object
+    properties:
+      code:
+        type: string
+        example: code_1
+      name:
+        type: string
+        example: Odjel X
+  create_sender_response:
+    type: object
+    properties:
+      code:
+        type: string
+        example: code_1
+      name:
+        type: string
+        example: Odjel X
+      created_at:
+        type: string
+        example: '2017-11-23T12:36:36.621+01:00'
+      updated_at:
+        type: string
+        example: '2017-11-23T12:36:36.621+01:00'
+  create_pacijent:
+    type: object
+    properties:
+      identifier:
+        type: string
+        example: 1111111
+      first_name:
+        type: string
+        example: Michael
+      last_name:
+        type: string
+        example: Jordan
+      date_of_birth:
+        type: string
+        example: '1963-02-17'
+      gender:
+        type: string
+        example: male
+      email:
+        type: string
+        example: test@email.org
+    xml:
+      name: Pacijent
+  create_pacijent_response:
+    type: object
+    properties:
+      id:
+        type: string
+        example: 1
+      identifier:
+        type: string
+        example: 1111111
+      first_name:
+        type: string
+        example: Michael
+      last_name:
+        type: string
+        example: Jordan
+      date_of_birth:
+        type: string
+        example: '1963-02-17'
+      gender:
+        type: string
+        example: male
+      email:
+        type: string
+        example: test@email.org
+      created_at:
+        type: string
+        example: '2017-11-23T12:36:36.621+01:00'
+      updated_at:
+        type: string
+        example: '2017-11-23T12:36:36.621+01:00'
+  update_pacijent_response:
+    type: object
+    properties:
+      id:
+        type: string
+        example: 1
+      identifier:
+        type: string
+        example: 1111111
+      first_name:
+        type: string
+        example: James
+      last_name:
+        type: string
+        example: Jordan
+      date_of_birth:
+        type: string
+        example: '1963-02-17'
+      gender:
+        type: string
+        example: male
+      email:
+        type: string
+        example: test@email.org
+      created_at:
+        type: string
+        example: '2017-11-23T12:36:36.621+01:00'
+      updated_at:
+        type: string
+        example: '2017-11-23T14:36:36.621+01:00'
+  create_order:
+    type: object
+    properties:
+      reference_id:
+        type: string
+        example: bis id/code
+      urgent:
+        type: string
+        example: true
+      doctor_code:
+        type: string
+        example: code_1
+      sender_code:
+        type: string
+        example: code_1
+      comment:
+        type: string
+        example: Example comment...
+      order_analyses:
+        type: array
+        items:
+          type: string
+        example:
+          - code1
+          - code2
+          - code3
+  create_order_response:
+    type: object
+    properties:
+      reference_id:
+        type: string
+        example: bis id/code
+      urgent:
+        type: string
+        example: true
+      status:
+        type: string
+        example: pending
+      doctor:
+        type: object
+        properties:
+          code:
+            type: string
+            example: code_1
+          title:
+            type: string
+            example: dr
+          first_name:
+            type: string
+            example: Jon
+          last_name:
+            type: string
+            example: Doe
+      sender:
+        type: object
+        properties:
+          code:
+            type: string
+            example: code_1
+          name:
+            type: string
+            example: Location
+      note:
+        type: string
+        example: Example note...
+      patient:
+        type: object
+        properties:
+          identifier:
+            type: string
+            example: 1111111
+          first_name:
+            type: string
+            example: Dino
+          last_name:
+            type: string
+            example: Maric
+          date_of_birth:
+            type: string
+            example: '1990-04-01'
+          gender:
+            type: string
+            example: male
+      order_analyses:
+        type: array
+        items:
+          type: object
+          properties:
+            code:
+              type: string
+            result:
+              type: string
+            ref_value:
+              type: string
+            flag:
+              type: string
+            unit:
+              type: string
+        example:
+          - code: code1
+            result: ''
+            ref_value: ''
+            flag: ''
+            unit: ''
+          - code: code2
+            result: ''
+            ref_value: ''
+            flag: ''
+            unit: ''
+          - code: code3
+            result: ''
+            ref_value: ''
+            flag: ''
+            unit: ''
+      created_at:
+        type: string
+        example: '2017-11-23T12:36:36.621+01:00'
+      updated_at:
+        type: string
+        example: '2017-11-23T12:36:36.621+01:00'
+  get_order_response:
+    type: object
+    properties:
+      reference_id:
+        type: string
+        example: bis id/code
+      urgent:
+        type: string
+        example: true
+      status:
+        type: string
+        example: finished
+      doctor:
+        type: object
+        properties:
+          code:
+            type: string
+            example: code_1
+          title:
+            type: string
+            example: dr
+          first_name:
+            type: string
+            example: Jon
+          last_name:
+            type: string
+            example: Doe
+      sender:
+        type: object
+        properties:
+          code:
+            type: string
+            example: code_1
+          name:
+            type: string
+            example: Location
+      note:
+        type: string
+        example: Example note...
+      patient:
+        type: object
+        properties:
+          identifier:
+            type: string
+            example: 1111111
+          first_name:
+            type: string
+            example: Dino
+          last_name:
+            type: string
+            example: Maric
+          date_of_birth:
+            type: string
+            example: '1990-04-01'
+          gender:
+            type: string
+            example: male
+      order_analyses:
+        type: array
+        items:
+          type: object
+          properties:
+            code:
+              type: string
+            result:
+              type: string
+            ref_value:
+              type: string
+            flag:
+              type: string
+            unit:
+              type: string
+        example:
+          - code: code1
+            result: '1,5'
+            ref_value: '0,5-7,53'
+            flag: ''
+            unit: ml
+          - code: code2
+            result: '5'
+            ref_value: 10-25
+            flag: L
+            unit: ml
+          - code: code3
+            result: '150'
+            ref_value: 50-100
+            flag: H
+            unit: l
+      created_at:
+        type: string
+        example: '2017-11-23T12:36:36.621+01:00'
+      updated_at:
+        type: string
+        example: '2017-11-23T14:36:36.621+01:00'
