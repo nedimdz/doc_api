@@ -39,7 +39,7 @@
           "Pacijenti"
         ],
         "summary": "Dodavanje novog pacijenta",
-        "description": "Obavezna polja:\n- identifier:String - Identifikacijski broj pacijenta, kao što je JMBG ili ukoliko je pacijent nepoznat neki jedinstveni broj\n- first_name:String - ime pacijenta\n- last_name:String - prezime pacijenta\n- data_of_birth:Sring - datum rođenja pacijenta. Format (yyyy-mm-dd), npr. 1990-12-25\n- gender:String - spol pacijenta, dozvoljene vrijednosti su (male, female, unknown, transgender, hermaphrodite)\n\nUkoliko neka obavezna polja fale ili je došlo do greške prilikom POST/PUT akcija, Air će vratiti odgovor sa greškom\n",
+        "description": "Ukoliko neka obavezna polja fale ili je došlo do greške prilikom POST/PUT akcija, Air će vratiti odgovor sa greškom\n",
         "operationId": "addPatient",
         "consumes": [
           "application/json"
@@ -165,7 +165,7 @@
           "Narudžbe"
         ],
         "summary": "Dodavanje nove narudžbe",
-        "description": "Narudžba se dodaje po pacijentu.\nObavezna polja:\n  - reference_id:String - Oznaka slučaja u bolničkom sistemu\n  - order_analyses:Array - lista analiza sa njihovim šiframa\nOstala polja:\n  - doctor_code:String - informacije o doktoru, odnosno šifra doktora\n  - sender_code:String - informacije o pošiljaocu/lokaciji\n  - urgent:Boolean - da li je narudžba hitna. Defaultna vrijednost je \"false\", dozvoljene vrijednosti: (\"true\", \"false\")\n  - comment:String - zabilješka prilikom pravljenja narudžbe\n\nUkoliko je došlo do greške prilikom POST/PUT poziva AIR će vratiti grešku sa detaljnim opisom. Prikazana je  greška ukoliko nije proslijeđena šifra doktora.\n",
+        "description": "Narudžba se dodaje po pacijentu. Ukoliko je došlo do greške prilikom POST/PUT poziva AIR će vratiti grešku sa detaljnim opisom. Prikazana je  greška ukoliko nije proslijeđena šifra doktora.\n",
         "operationId": "addOrder",
         "consumes": [
           "application/json"
@@ -306,7 +306,6 @@
           "Lokacije"
         ],
         "summary": "Dodavanje nove lokacije",
-        "description": "Obavezna polja:\n- code:String - identifikacijski kod lokacije. Code je unikatan, što znači da Air neće dopustiti dodavanje dvije lokacije sa istim kodom.\n- name:String - naziv lokacije\n",
         "consumes": [
           "application/json"
         ],
@@ -340,7 +339,6 @@
           "Doktori"
         ],
         "summary": "Dodavanje nove lokacije",
-        "description": "Obavezno polje:\n - code:String - identifikacijski kod lokacije. Code je unikatan, što znači da Air neće dopustiti dodavanje dva doktora sa istim kodom.\n - title:String - titula doktora\n - first_name:String - ime doktora\n - last_name:String - prezime doktora\n \nOstala polja:\n  - email:String - email doktora\n",
         "parameters": [
           {
             "in": "body",
@@ -366,21 +364,31 @@
   "definitions": {
     "create_doctor": {
       "type": "object",
+      "required": [
+        "code",
+        "title",
+        "first_name",
+        "last_name"
+      ],
       "properties": {
         "code": {
           "type": "string",
+          "description": "identifikacijski kod lokacije. Code je unikatan, što znači da Air neće dopustiti dodavanje dva doktora sa istim kodom.",
           "example": "code_1"
         },
         "title": {
           "type": "string",
+          "description": "titula doktora",
           "example": "MD"
         },
         "first_name": {
           "type": "string",
+          "description": "ime doktora",
           "example": "Gregory"
         },
         "last_name": {
           "type": "string",
+          "description": "prezime doktora",
           "example": "House"
         },
         "email": {
@@ -424,13 +432,19 @@
     },
     "create_sender": {
       "type": "object",
+      "required": [
+        "code",
+        "name"
+      ],
       "properties": {
         "code": {
           "type": "string",
+          "description": "identifikacijski kod lokacije. Code je unikatan, što znači da Air neće dopustiti dodavanje dvije lokacije sa istim kodom.",
           "example": "code_1"
         },
         "name": {
           "type": "string",
+          "description": "naziv lokacije",
           "example": "Odjel X"
         }
       }
@@ -458,6 +472,13 @@
     },
     "create_pacijent": {
       "type": "object",
+      "required": [
+        "identifier",
+        "first_name",
+        "last_name",
+        "date_of_birth",
+        "gender"
+      ],
       "properties": {
         "identifier": {
           "type": "string",
@@ -572,29 +593,39 @@
     },
     "create_order": {
       "type": "object",
+      "required": [
+        "reference_id",
+        "order_analyses"
+      ],
       "properties": {
         "reference_id": {
           "type": "string",
+          "description": "oznaka slučaja u bolničkom sistemu",
           "example": "bis id/code"
         },
         "urgent": {
           "type": "string",
+          "description": "da li je narudžba hitna. Defaultna vrijednost je \"false\", dozvoljene vrijednosti: (\"true\", \"false\")\n",
           "example": true
         },
         "doctor_code": {
           "type": "string",
+          "description": "informacije o doktoru, odnosno šifra doktora",
           "example": "code_1"
         },
         "sender_code": {
           "type": "string",
+          "description": "informacije o pošiljaocu/lokaciji",
           "example": "code_1"
         },
         "comment": {
           "type": "string",
+          "description": "zabilješka prilikom pravljenja narudžbe",
           "example": "Example comment..."
         },
         "order_analyses": {
           "type": "array",
+          "description": "lista analiza sa njihovim šiframa",
           "items": {
             "type": "string"
           },

@@ -52,22 +52,6 @@ paths:
         - Pacijenti
       summary: Dodavanje novog pacijenta
       description: >
-        Obavezna polja:
-
-        - identifier:String - Identifikacijski broj pacijenta, kao što je JMBG
-        ili ukoliko je pacijent nepoznat neki jedinstveni broj
-
-        - first_name:String - ime pacijenta
-
-        - last_name:String - prezime pacijenta
-
-        - data_of_birth:Sring - datum rođenja pacijenta. Format (yyyy-mm-dd),
-        npr. 1990-12-25
-
-        - gender:String - spol pacijenta, dozvoljene vrijednosti su (male,
-        female, unknown, transgender, hermaphrodite)
-
-
         Ukoliko neka obavezna polja fale ili je došlo do greške prilikom
         POST/PUT akcija, Air će vratiti odgovor sa greškom
       operationId: addPatient
@@ -154,20 +138,9 @@ paths:
         - Narudžbe
       summary: Dodavanje nove narudžbe
       description: >
-        Narudžba se dodaje po pacijentu.
-
-        Obavezna polja:
-          - reference_id:String - Oznaka slučaja u bolničkom sistemu
-          - order_analyses:Array - lista analiza sa njihovim šiframa
-        Ostala polja:
-          - doctor_code:String - informacije o doktoru, odnosno šifra doktora
-          - sender_code:String - informacije o pošiljaocu/lokaciji
-          - urgent:Boolean - da li je narudžba hitna. Defaultna vrijednost je "false", dozvoljene vrijednosti: ("true", "false")
-          - comment:String - zabilješka prilikom pravljenja narudžbe
-
-        Ukoliko je došlo do greške prilikom POST/PUT poziva AIR će vratiti
-        grešku sa detaljnim opisom. Prikazana je  greška ukoliko nije
-        proslijeđena šifra doktora.
+        Narudžba se dodaje po pacijentu. Ukoliko je došlo do greške prilikom
+        POST/PUT poziva AIR će vratiti grešku sa detaljnim opisom. Prikazana je 
+        greška ukoliko nije proslijeđena šifra doktora.
       operationId: addOrder
       consumes:
         - application/json
@@ -339,13 +312,6 @@ paths:
       tags:
         - Lokacije
       summary: Dodavanje nove lokacije
-      description: >
-        Obavezna polja:
-
-        - code:String - identifikacijski kod lokacije. Code je unikatan, što
-        znači da Air neće dopustiti dodavanje dvije lokacije sa istim kodom.
-
-        - name:String - naziv lokacije
       consumes:
         - application/json
       produces:
@@ -367,15 +333,6 @@ paths:
       tags:
         - Doktori
       summary: Dodavanje nove lokacije
-      description: |
-        Obavezno polje:
-         - code:String - identifikacijski kod lokacije. Code je unikatan, što znači da Air neće dopustiti dodavanje dva doktora sa istim kodom.
-         - title:String - titula doktora
-         - first_name:String - ime doktora
-         - last_name:String - prezime doktora
-         
-        Ostala polja:
-          - email:String - email doktora
       parameters:
         - in: body
           name: body
@@ -391,18 +348,29 @@ paths:
 definitions:
   create_doctor:
     type: object
+    required:
+      - code
+      - title
+      - first_name
+      - last_name
     properties:
       code:
         type: string
+        description: >-
+          identifikacijski kod lokacije. Code je unikatan, što znači da Air neće
+          dopustiti dodavanje dva doktora sa istim kodom.
         example: code_1
       title:
         type: string
+        description: titula doktora
         example: MD
       first_name:
         type: string
+        description: ime doktora
         example: Gregory
       last_name:
         type: string
+        description: prezime doktora
         example: House
       email:
         type: string
@@ -433,12 +401,19 @@ definitions:
         example: '2017-11-23T12:36:36.621+01:00'
   create_sender:
     type: object
+    required:
+      - code
+      - name
     properties:
       code:
         type: string
+        description: >-
+          identifikacijski kod lokacije. Code je unikatan, što znači da Air neće
+          dopustiti dodavanje dvije lokacije sa istim kodom.
         example: code_1
       name:
         type: string
+        description: naziv lokacije
         example: Odjel X
   create_sender_response:
     type: object
@@ -457,6 +432,12 @@ definitions:
         example: '2017-11-23T12:36:36.621+01:00'
   create_pacijent:
     type: object
+    required:
+      - identifier
+      - first_name
+      - last_name
+      - date_of_birth
+      - gender
     properties:
       identifier:
         type: string
@@ -540,24 +521,35 @@ definitions:
         example: '2017-11-23T14:36:36.621+01:00'
   create_order:
     type: object
+    required:
+      - reference_id
+      - order_analyses
     properties:
       reference_id:
         type: string
+        description: oznaka slučaja u bolničkom sistemu
         example: bis id/code
       urgent:
         type: string
+        description: >
+          da li je narudžba hitna. Defaultna vrijednost je "false", dozvoljene
+          vrijednosti: ("true", "false")
         example: true
       doctor_code:
         type: string
+        description: 'informacije o doktoru, odnosno šifra doktora'
         example: code_1
       sender_code:
         type: string
+        description: informacije o pošiljaocu/lokaciji
         example: code_1
       comment:
         type: string
+        description: zabilješka prilikom pravljenja narudžbe
         example: Example comment...
       order_analyses:
         type: array
+        description: lista analiza sa njihovim šiframa
         items:
           type: string
         example:
